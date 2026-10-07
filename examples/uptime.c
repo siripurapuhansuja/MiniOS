@@ -1,44 +1,52 @@
 #include <stdio.h>
+#include <string.h>
 
 int main(void)
 {
-    FILE *fp = fopen("/proc/uptime", "r");
+    FILE *fp;
+    double uptime = 0.0;
+    double idle = 0.0;
+    char label[50];
+    unsigned long memory = 0;
 
-    if (fp == NULL) {
+    fp = fopen("/proc/uptime", "r");
+
+    if (fp == NULL)
+    {
         perror("fopen");
         return 1;
     }
 
-    double uptime;
-
-    if (fscanf(fp, "%lf", &uptime) != 1) {
+    if (fscanf(fp, "%lf %lf", &uptime, &idle) != 2)
+    {
         fprintf(stderr, "Could not read /proc/uptime\n");
         fclose(fp);
         return 1;
     }
 
-    printf("System uptime: %.2f seconds\n", uptime);
+    fclose(fp);
+
+    fp = fopen("/proc/meminfo", "r");
+
+    if (fp == NULL)
+    {
+        perror("fopen");
+        return 1;
+    }
+
+    while (fscanf(fp, "%49s %lu kB", label, &memory) == 2)
+    {
+        if (strcmp(label, "MemTotal:") == 0)
+        {
+            break;
+        }
+    }
 
     fclose(fp);
 
-FILE *mem_fp = fopen("/proc/meminfo", "r");
+    printf("System uptime: %.2f seconds\n", uptime);
+    printf("Idle time: %.2f seconds\n", idle);
+    printf("Total memory: %lu kB\n", memory);
 
-if (mem_fp == NULL) {
-    perror("fopen");
-    return 1;
-}
-
-char label[50];
-long mem_total;
-
-if (fscanf(mem_fp, "%49s %ld", label, &mem_total) != 2) {
-    fprintf(stderr, "Could not read /proc/meminfo\n");
-    fclose(mem_fp);
-    return 1;
-}
-
-printf("Total memory: %ld kB\n", mem_total);
-
-fclose(mem_fp);
-return 0;
+    return 0;
 }
