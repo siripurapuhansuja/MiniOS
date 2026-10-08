@@ -1,19 +1,19 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <sys/wait.h>
 #include <string.h>
+#include <sys/wait.h>
 
-int main(void) {
+int main(void)
+{
     int fd[2];
-    pid_t pid;
-    char buffer[100];
 
     if (pipe(fd) == -1) {
         perror("pipe");
         return 1;
     }
 
-    pid = fork();
+    pid_t pid = fork();
 
     if (pid < 0) {
         perror("fork");
@@ -21,28 +21,40 @@ int main(void) {
     }
 
     if (pid == 0) {
+        /* Child reads from the pipe */
         close(fd[1]);
 
-        read(fd[0], buffer, sizeof(buffer) - 1);
-        buffer[sizeof(buffer) - 1] = '\0';
+        char buffer[100];
+
+        ssize_t n = read(fd[0], buffer, sizeof(buffer) - 1);
+
+        if (n < 0) {
+            perror("read");
+            exit(1);
+        }
+
+        buffer[n] = '\0';
 
         printf("Child received: %s\n", buffer);
 
         close(fd[0]);
-        return 0;
+
+        exit(0);
     }
 
+    /* Parent writes to the pipe */
     close(fd[0]);
 
-    const char *message = "Hello from parent through pipe!";
+    const char *message = "Hello from parent";
 
-    write(fd[1], message, strlen(message) + 1);
+    if (write(fd[1], message, strlen(message)) < 0) {
+        perror("write");
+        return 1;
+    }
 
     close(fd[1]);
 
-    wait(NULL);
-
-    printf("Parent: pipe experiment completed\n");
+    waitpid(pid, NULL, 0);
 
     return 0;
 }
