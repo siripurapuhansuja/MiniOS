@@ -1,12 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
-int main(void) {
+int main(void)
+{
     pid_t pid;
-    int status;
-
-    printf("Parent: starting exec/wait experiment\n");
 
     pid = fork();
 
@@ -16,27 +15,24 @@ int main(void) {
     }
 
     if (pid == 0) {
-        printf("Child: executing 'ls -l'\n");
+        printf("Child: executing date...\n");
 
-        execlp("ls", "ls", "-l", (char *)NULL);
+        execlp("date", "date", NULL);
 
         perror("execlp");
-        return 1;
+        exit(1);
     }
 
-    printf("Parent: waiting for child process...\n");
+    printf("Parent: waiting for child...\n");
+
+    int status;
 
     if (waitpid(pid, &status, 0) < 0) {
         perror("waitpid");
         return 1;
     }
 
-    if (WIFEXITED(status)) {
-        printf("Parent: child exited with status %d\n",
-               WEXITSTATUS(status));
-    }
-
-    printf("Parent: exec/wait experiment completed\n");
+    printf("Parent: child finished.\n");
 
     return 0;
 }
