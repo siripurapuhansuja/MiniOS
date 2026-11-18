@@ -1,5 +1,6 @@
-# Compiled object files
+# Compiled object and dependency files
 *.o
+*.d
 
 # Temporary files
 *.swp
