@@ -7,7 +7,5 @@ int main(void)
     printf("         Welcome to MiniOS v1.0         \n");
     printf("========================================\n\n");
 
-    shell_loop();
-
-    return 0;
+    return shell_loop();
 }
