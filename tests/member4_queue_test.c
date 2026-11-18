@@ -47,6 +47,7 @@ int main(void)
 {
     JobQueue *queue;
     pthread_t thread;
+    pthread_t waiters[4];
     const struct timespec pause = {.tv_nsec = 100000000};
 
     assert(queue_create(&queue, 2) == 0);
@@ -74,26 +75,31 @@ int main(void)
     puts("PASS: Three jobs through two slots");
 
     assert(queue_create(&queue, 2) == 0);
-    assert(pthread_create(&thread, NULL, idle_worker, queue) == 0);
+    for (int i = 0; i < 4; i++)
+        assert(pthread_create(&waiters[i], NULL, idle_worker, queue) == 0);
     nanosleep(&pause, NULL);
     queue_close(queue);
-    assert(pthread_join(thread, NULL) == 0);
+    queue_close(queue);
+    for (int i = 0; i < 4; i++)
+        assert(pthread_join(waiters[i], NULL) == 0);
     queue_destroy(queue);
-    puts("PASS: Close with an idle worker");
+    puts("PASS: Close twice with four idle workers");
 
     assert(queue_create(&queue, 2) == 0);
     push_job(queue, 1);
     push_job(queue, 2);
     request = (PushRequest){.queue = queue, .expected_result = ECANCELED};
-    assert(pthread_create(&thread, NULL, push_third, &request) == 0);
+    for (int i = 0; i < 4; i++)
+        assert(pthread_create(&waiters[i], NULL, push_third, &request) == 0);
     nanosleep(&pause, NULL);
     queue_close(queue);
-    assert(pthread_join(thread, NULL) == 0);
+    for (int i = 0; i < 4; i++)
+        assert(pthread_join(waiters[i], NULL) == 0);
     expect_job(queue, 1);
     expect_job(queue, 2);
     expect_closed(queue);
     queue_destroy(queue);
-    puts("PASS: Close with a full queue");
+    puts("PASS: Close a full queue with four producers");
 
     return 0;
 }
