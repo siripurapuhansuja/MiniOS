@@ -3,17 +3,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+
 #include "jobs.h"
 #include "ipc.h"
 
 #define MAX_JOBS 20
-#define NAME_SIZE 50
-
-typedef struct {
-    int id;
-    char name[NAME_SIZE];
-    char result[128];
-} Job;
 
 static Job jobs[MAX_JOBS];
 static int job_count = 0;
@@ -49,6 +43,7 @@ void submit_job(const char *name) {
         close(fd[0]);
 
         char result[128];
+
         snprintf(result, sizeof(result),
                  "Job '%s' completed", name);
 
@@ -65,17 +60,26 @@ void submit_job(const char *name) {
     close(fd[1]);
 
     Job *job = &jobs[job_count];
+
     job->id = job_count + 1;
 
-    snprintf(job->name, sizeof(job->name), "%s", name);
+    snprintf(job->name, sizeof(job->name),
+             "%s", name);
+
+    job->status = JOB_RUNNING;
+    job->worker_id = 0;
+    job->checksum = 0;
+
+    char result[128];
 
     ssize_t n = receive_result(fd[0],
-                               job->result,
-                               sizeof(job->result));
+                               result,
+                               sizeof(result));
 
     close(fd[0]);
 
     int status;
+
     if (waitpid(pid, &status, 0) < 0) {
         perror("waitpid");
         return;
@@ -87,10 +91,13 @@ void submit_job(const char *name) {
         return;
     }
 
+    job->status = JOB_COMPLETED;
     job_count++;
 
-    printf("Submitted Job %d: %s\n", job->id, job->name);
-    printf("Manager received: %s\n", job->result);
+    printf("Submitted Job %d: %s\n",
+           job->id, job->name);
+
+    printf("Manager received: %s\n", result);
 }
 
 void list_jobs(void) {
@@ -103,9 +110,33 @@ void list_jobs(void) {
            "ID", "JOB NAME", "STATUS");
 
     for (int i = 0; i < job_count; i++) {
+        const char *status;
+
+        switch (jobs[i].status) {
+            case JOB_QUEUED:
+                status = "Queued";
+                break;
+
+            case JOB_RUNNING:
+                status = "Running";
+                break;
+
+            case JOB_COMPLETED:
+                status = "Completed";
+                break;
+
+            case JOB_FAILED:
+                status = "Failed";
+                break;
+
+            default:
+                status = "Unknown";
+                break;
+        }
+
         printf("%-5d %-20s %-12s\n",
                jobs[i].id,
                jobs[i].name,
-               "Completed");
+               status);
     }
 }
