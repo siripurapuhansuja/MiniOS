@@ -1,68 +1,109 @@
-
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include "system_info.h"
+#include <string.h>
 #include "jobs.h"
+#include "minios.h"
+#include "system_info.h"
 
-void show_help(void) {
-    printf("\n========================================\n");
-    printf("        MiniOS Available Commands        \n");
-    printf("========================================\n");
-    printf("  help         - Show available commands\n");
-    printf("  system       - Show system uptime & memory\n");
-    printf("  processes    - Run process experiments\n");
-    printf("  submit <job> - Submit a new job\n");
-    printf("  jobs         - List submitted jobs\n");
-    printf("  quit         - Exit MiniOS\n");
-    printf("========================================\n\n");
+static const char separators[] = " \t\r\n\v\f";
+
+static void show_help(void)
+{
+    puts("MiniOS Available Commands");
+    puts("  help                   - Show available commands");
+    puts("  system                 - Show system uptime & memory");
+    puts("  processes              - Show live Linux processes");
+    puts("  run <program> [args]   - Run an external program");
+    puts("  submit <job>           - Submit a new job");
+    puts("  jobs                   - List submitted jobs");
+    puts("  quit                   - Exit MiniOS");
 }
 
-void shell(void) {
-    char command[128];
+static void run_command(char *arguments)
+{
+    size_t count = 0;
+    const char *word = arguments;
+    while (*word != '\0') {
+        count++;
+        word += strcspn(word, separators);
+        word += strspn(word, separators);
+    }
 
-    printf("Starting MiniOS Shell...\n");
-    printf("Type 'help' to see available commands.\n\n");
+    if (count == 0) {
+        puts("Usage: run <program> [args]");
+        return;
+    }
 
-    while (1) {
+    char **args = calloc(count + 1, sizeof(*args));
+    if (args == NULL) {
+        perror("run: allocating arguments");
+        return;
+    }
+
+    char *next;
+    size_t index = 0;
+    for (char *arg = strtok_r(arguments, separators, &next); arg != NULL;
+         arg = strtok_r(NULL, separators, &next)) {
+        args[index++] = arg;
+    }
+    args[index] = NULL;
+
+    int status = run_program(args);
+    if (status > 0)
+        fprintf(stderr, "run: %s exited with status %d\n", args[0], status);
+    free(args);
+}
+
+void shell_loop(void)
+{
+    char *line = NULL;
+    size_t capacity = 0;
+
+    /* An external program can read input that follows its run command. */
+    setvbuf(stdin, NULL, _IONBF, 0);
+
+    puts("Starting MiniOS Shell...");
+    puts("Type 'help' to see available commands.\n");
+
+    for (;;) {
         printf("MiniOS> ");
         fflush(stdout);
 
-        if (fgets(command, sizeof(command), stdin) == NULL) {
+        if (getline(&line, &capacity, stdin) < 0) {
+            if (!feof(stdin))
+                perror("MiniOS: reading input");
             break;
         }
 
-        command[strcspn(command, "\n")] = '\0';
+        line[strcspn(line, "\r\n")] = '\0';
+        char *remaining;
+        char *command = strtok_r(line, separators, &remaining);
+        if (command == NULL)
+            continue;
+
+        char *arguments = remaining + strspn(remaining, separators);
 
         if (strcmp(command, "help") == 0) {
             show_help();
-        }
-        else if (strcmp(command, "system") == 0) {
+        } else if (strcmp(command, "system") == 0) {
             show_system_info();
-        }
-        else if (strcmp(command, "processes") == 0) {
-            printf("\nRunning Process Experiments...\n");
-            printf("Check examples/ directory for fork, exec, and pipe demos.\n\n");
-        }
-        else if (strncmp(command, "submit ", 7) == 0) {
-            submit_job(command + 7);
-        }
-        else if (strcmp(command, "submit") == 0) {
-            printf("Usage: submit <job_name>\n");
-        }
-        else if (strcmp(command, "jobs") == 0) {
+        } else if (strcmp(command, "processes") == 0) {
+            show_processes();
+        } else if (strcmp(command, "run") == 0) {
+            run_command(arguments);
+        } else if (strcmp(command, "submit") == 0) {
+            submit_job(arguments);
+        } else if (strcmp(command, "jobs") == 0) {
             list_jobs();
-        }
-        else if (strcmp(command, "quit") == 0) {
-            printf("Exiting MiniOS. Goodbye!\n");
+        } else if (strcmp(command, "quit") == 0) {
+            puts("Exiting MiniOS. Goodbye!");
             break;
-        }
-        else if (command[0] == '\0') {
-            continue;
-        }
-        else {
-            printf("Unknown command: '%s'. Type 'help' for available commands.\n", command);
+        } else {
+            printf("Unknown command: '%s'. Type 'help' for available commands.\n",
+                   command);
         }
     }
-}
 
+    free(line);
+}
