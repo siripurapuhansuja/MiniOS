@@ -9,5 +9,6 @@ void runtime_submit(const char *name);
 
 /* Stop workers, drain results, and release resources. */
 void runtime_stop(void);
+void runtime_print_workers(void);
 
 #endif

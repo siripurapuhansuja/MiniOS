@@ -1,7 +1,9 @@
 #define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "jobs.h"
 #include "minios.h"
 #include "system_info.h"
@@ -18,6 +20,8 @@ static void show_help(void)
     puts("  run <program> [args]   - Run an external program");
     puts("  submit <job>           - Submit a new job");
     puts("  jobs                   - List submitted jobs");
+    puts("  workers                - Show worker status");
+    puts("  race                   - Compare shared counter updates");
     puts("  quit                   - Exit MiniOS");
 }
 
@@ -56,8 +60,9 @@ static void run_command(char *arguments)
     free(args);
 }
 
-void shell_loop(void)
+int shell_loop(void)
 {
+    int error = 0;
     char *line = NULL;
     size_t capacity = 0;
 
@@ -94,9 +99,15 @@ void shell_loop(void)
         } else if (strcmp(command, "run") == 0) {
             run_command(arguments);
         } else if (strcmp(command, "submit") == 0) {
-            runtime_submit(arguments);
+	    runtime_submit(arguments);
         } else if (strcmp(command, "jobs") == 0) {
             list_jobs();
+        } else if (strcmp(command, "workers") == 0) {
+            runtime_print_workers();
+        } else if (strcmp(command, "race") == 0) {
+            error = race_run();
+            if (error != 0)
+                fprintf(stderr, "race: %s\n", strerror(error));
         } else if (strcmp(command, "quit") == 0) {
             puts("Exiting MiniOS. Goodbye!");
             break;
@@ -107,4 +118,5 @@ void shell_loop(void)
     }
 
     free(line);
+    return 0;
 }

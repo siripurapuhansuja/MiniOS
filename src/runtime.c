@@ -114,3 +114,12 @@ void runtime_stop(void)
         runtime.queue = NULL;
     }
 }
+void runtime_print_workers(void)
+{
+    if (runtime.workers == NULL) {
+        fprintf(stderr, "Worker pool is not running.\n");
+        return;
+    }
+
+    workers_print(runtime.workers, stdout);
+}

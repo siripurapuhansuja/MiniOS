@@ -1,4 +1,6 @@
 
+#define _GNU_SOURCE
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -123,7 +125,7 @@ int jobs_start(void) {
         return -1;
     }
 
-    if (pipe(result_pipe) == -1) {
+    if (pipe2(result_pipe, O_CLOEXEC) == -1) {
         perror("pipe");
         return -1;
     }

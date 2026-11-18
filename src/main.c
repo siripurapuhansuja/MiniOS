@@ -13,9 +13,9 @@ int main(void)
         return 1;
     }
 
-    shell_loop();
+    int status = shell_loop();
 
     runtime_stop();
 
-    return 0;
+    return status;
 }
