@@ -1,13 +1,24 @@
 
 CC = gcc
+
 CPPFLAGS += -Iinclude
 CFLAGS = -Wall -Wextra
+THREAD_FLAGS = -pthread
 
-SRCS = src/main.c src/shell.c src/system_info.c src/process.c src/ipc.c src/jobs.c src/workers.c src/sync.c src/race.c src/runtime.c
+SRCS = src/main.c src/shell.c src/system_info.c src/process.c \
+       src/ipc.c src/jobs.c src/workers.c src/sync.c \
+       src/race.c src/runtime.c
+
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
+
 TARGET = minios
-THREAD_FLAGS = -pthread
+BUILD_DIR = build
+
+QUEUE_TEST = $(BUILD_DIR)/member4_queue_test
+RACE_TEST = $(BUILD_DIR)/member4_race_test
+DRAIN_TEST = $(BUILD_DIR)/member4_worker_drain_test
+BENCHMARK = $(BUILD_DIR)/worker_benchmark
 
 all: $(TARGET)
 
@@ -17,10 +28,35 @@ $(TARGET): $(OBJS)
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) -MMD -MP -c $< -o $@
 
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(QUEUE_TEST): tests/member4_queue_test.c src/sync.c | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $^ -o $@
+
+$(RACE_TEST): tests/member4_race_test.c src/race.c | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $^ -o $@
+
+$(DRAIN_TEST): tests/member4_worker_drain_test.c src/workers.c src/sync.c | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $^ -o $@
+
+$(BENCHMARK): tests/worker_benchmark.c src/workers.c | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $^ -o $@
+
+test: $(QUEUE_TEST) $(RACE_TEST) $(DRAIN_TEST)
+	./$(QUEUE_TEST)
+	./$(RACE_TEST)
+	./$(DRAIN_TEST)
+
+benchmark: $(BENCHMARK)
+	@echo "Benchmark executable built: $(BENCHMARK)"
+	@echo "Run it with the worker count options supported by the program."
+
 -include $(DEPS)
 
 clean:
-	rm -f $(OBJS) $(DEPS) $(TARGET) uptime_demo fork_demo fork_memory_demo exec_wait_demo pipe_demo
+	rm -f $(OBJS) $(DEPS) $(TARGET) uptime_demo fork_demo \
+	      fork_memory_demo exec_wait_demo pipe_demo
+	rm -rf $(BUILD_DIR)
 
-.PHONY: all clean
-
+.PHONY: all test benchmark clean
