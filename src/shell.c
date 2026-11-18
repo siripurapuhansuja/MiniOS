@@ -1,60 +1,15 @@
 #define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "jobs.h"
 #include "minios.h"
 #include "system_info.h"
-#include "sync.h"
+#include "runtime.h"
 
 static const char separators[] = " \t\r\n\v\f";
-
-
-enum { WORKER_COUNT = 4, QUEUE_CAPACITY = 5 };
-
-static void mark_running(void *context, int job_id)
-{
-    (void)context;
-    jobs_mark_running(job_id);
-}
-
-static int publish_result(void *context, const WorkerResult *result)
-{
-    (void)context;
-    if (jobs_publish_result(result) == 0)
-        return 0;
-
-    perror("jobs: publishing worker result");
-    jobs_mark_failed(result->job_id);
-    return -1;
-}
-
-static void enqueue_job(JobQueue *queue, const char *name)
-{
-    WorkerJob job = {0};
-    size_t length = strlen(name);
-    if (length == 0 || length >= sizeof(job.name) || length >= JOB_NAME_SIZE) {
-        fprintf(stderr, "Usage: submit <job> (1-%zu bytes)\n",
-                sizeof(job.name) - 1);
-        return;
-    }
-
-    memcpy(job.name, name, length + 1);
-    job.id = jobs_register(job.name);
-    if (job.id < 0) {
-        puts("Job list is full.");
-        return;
-    }
-
-    int error = queue_push(queue, &job);
-    if (error != 0) {
-        jobs_mark_failed(job.id);
-        fprintf(stderr, "submit: %s\n", strerror(error));
-        return;
-    }
-
-    printf("Submitted Job %d: %s\n", job.id, job.name);
-}
 
 static void show_help(void)
 {
@@ -107,34 +62,7 @@ static void run_command(char *arguments)
 
 int shell_loop(void)
 {
-    JobQueue *queue = NULL;
-    int error = queue_create(&queue, QUEUE_CAPACITY);
-    if (error != 0) {
-        fprintf(stderr, "queue: %s\n", strerror(error));
-        return 1;
-    }
-
-    if (jobs_start() != 0) {
-        queue_destroy(queue);
-        return 1;
-    }
-
-    WorkerHooks hooks = {
-        .context = queue,
-        .take_job = queue_pop,
-        .mark_running = mark_running,
-        .publish_result = publish_result,
-        .close_queue = queue_close
-    };
-    WorkerPool *pool = NULL;
-    error = workers_start(&pool, WORKER_COUNT, &hooks);
-    if (error != 0) {
-        fprintf(stderr, "workers: %s\n", strerror(error));
-        jobs_stop();
-        queue_destroy(queue);
-        return 1;
-    }
-
+    int error = 0;
     char *line = NULL;
     size_t capacity = 0;
 
@@ -171,11 +99,11 @@ int shell_loop(void)
         } else if (strcmp(command, "run") == 0) {
             run_command(arguments);
         } else if (strcmp(command, "submit") == 0) {
-            enqueue_job(queue, arguments);
+	    runtime_submit(arguments);
         } else if (strcmp(command, "jobs") == 0) {
             list_jobs();
         } else if (strcmp(command, "workers") == 0) {
-            workers_print(pool, stdout);
+            runtime_print_workers();
         } else if (strcmp(command, "race") == 0) {
             error = race_run();
             if (error != 0)
@@ -190,8 +118,5 @@ int shell_loop(void)
     }
 
     free(line);
-    workers_stop(pool);
-    jobs_stop();
-    queue_destroy(queue);
     return 0;
 }

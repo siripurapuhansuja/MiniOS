@@ -23,7 +23,6 @@ typedef struct {
     uint32_t checksum;
 } Job;
 
-void submit_job(const char *name);
 void list_jobs(void);
 
 /* Start the background result reader. */
@@ -37,8 +36,8 @@ int jobs_register(const char *name);
 
 /* Update a job when a worker starts processing it. */
 void jobs_mark_running(int job_id);
+/* Mark a job as failed if submission or processing fails. */
 void jobs_mark_failed(int job_id);
-
 /* Publish a worker result through the pipe. */
 int jobs_publish_result(const WorkerResult *result);
 
