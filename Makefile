@@ -15,18 +15,37 @@ DEPS = $(OBJS:.o=.d)
 TARGET = minios
 BUILD_DIR = build
 
+EXAMPLES = uptime_demo fork_demo fork_memory_demo exec_wait_demo pipe_demo
+
 QUEUE_TEST = $(BUILD_DIR)/member4_queue_test
 RACE_TEST = $(BUILD_DIR)/member4_race_test
 DRAIN_TEST = $(BUILD_DIR)/member4_worker_drain_test
 BENCHMARK = $(BUILD_DIR)/worker_benchmark
 
-all: $(TARGET)
+all: $(TARGET) examples
 
 $(TARGET): $(OBJS)
 	$(CC) $(LDFLAGS) $(THREAD_FLAGS) $^ $(LDLIBS) -o $@
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) -MMD -MP -c $< -o $@
+
+examples: $(EXAMPLES)
+
+uptime_demo: examples/uptime.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+fork_demo: examples/fork_demo.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+fork_memory_demo: examples/fork_memory_demo.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+exec_wait_demo: examples/exec_wait_demo.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+pipe_demo: examples/pipe_demo.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -49,14 +68,13 @@ test: $(QUEUE_TEST) $(RACE_TEST) $(DRAIN_TEST)
 	./$(DRAIN_TEST)
 
 benchmark: $(BENCHMARK)
-	@echo "Benchmark executable built: $(BENCHMARK)"
-	@echo "Run it with the worker count options supported by the program."
+	@echo "Run with: ./$(BENCHMARK) --workers 4"
 
 -include $(DEPS)
 
 clean:
-	rm -f $(OBJS) $(DEPS) $(TARGET) uptime_demo fork_demo \
-	      fork_memory_demo exec_wait_demo pipe_demo
+	rm -f $(OBJS) $(DEPS) $(TARGET) $(EXAMPLES)
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all test benchmark clean
+.PHONY: all examples test benchmark clean
+
