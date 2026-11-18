@@ -1,4 +1,6 @@
 
+#define _GNU_SOURCE
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -230,7 +232,7 @@ int jobs_start(void) {
         return -1;
     }
 
-    if (pipe(result_pipe) == -1) {
+    if (pipe2(result_pipe, O_CLOEXEC) == -1) {
         perror("pipe");
         return -1;
     }
@@ -310,6 +312,18 @@ void jobs_mark_running(int job_id) {
         }
     }
 
+    pthread_mutex_unlock(&jobs_lock);
+}
+
+
+void jobs_mark_failed(int job_id) {
+    pthread_mutex_lock(&jobs_lock);
+    for (int i = 0; i < job_count; i++) {
+        if (jobs[i].id == job_id && jobs[i].status != JOB_COMPLETED) {
+            jobs[i].status = JOB_FAILED;
+            break;
+        }
+    }
     pthread_mutex_unlock(&jobs_lock);
 }
 

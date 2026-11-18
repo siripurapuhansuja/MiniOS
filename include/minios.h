@@ -1,7 +1,8 @@
 #ifndef MINIOS_H
 #define MINIOS_H
 
-void shell_loop(void);
+int shell_loop(void);
+int race_run(void);
 void show_processes(void);
 int run_program(char **args);
 

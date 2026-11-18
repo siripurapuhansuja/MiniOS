@@ -37,6 +37,7 @@ int jobs_register(const char *name);
 
 /* Update a job when a worker starts processing it. */
 void jobs_mark_running(int job_id);
+void jobs_mark_failed(int job_id);
 
 /* Publish a worker result through the pipe. */
 int jobs_publish_result(const WorkerResult *result);
