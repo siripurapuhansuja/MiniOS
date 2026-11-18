@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "minios.h"
+#include "runtime.h"
 
 int main(void)
 {
@@ -7,7 +8,14 @@ int main(void)
     printf("         Welcome to MiniOS v1.0         \n");
     printf("========================================\n\n");
 
+    if (runtime_start() != 0) {
+        fprintf(stderr, "MiniOS initialization failed.\n");
+        return 1;
+    }
+
     shell_loop();
+
+    runtime_stop();
 
     return 0;
 }

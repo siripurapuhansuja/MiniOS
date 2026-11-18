@@ -5,6 +5,7 @@
 #include "jobs.h"
 #include "minios.h"
 #include "system_info.h"
+#include "runtime.h"
 
 static const char separators[] = " \t\r\n\v\f";
 
@@ -93,7 +94,7 @@ void shell_loop(void)
         } else if (strcmp(command, "run") == 0) {
             run_command(arguments);
         } else if (strcmp(command, "submit") == 0) {
-            submit_job(arguments);
+            runtime_submit(arguments);
         } else if (strcmp(command, "jobs") == 0) {
             list_jobs();
         } else if (strcmp(command, "quit") == 0) {

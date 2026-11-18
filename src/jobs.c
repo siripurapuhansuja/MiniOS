@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/wait.h>
 #include <pthread.h>
 #include <errno.h>
 
@@ -20,112 +19,6 @@ static pthread_mutex_t pipe_write_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t reader_thread;
 static int result_pipe[2] = {-1, -1};
 static int reader_started = 0;
-
-/* --------------------------------------------------
-   Existing fork-and-pipe job demonstration
-   -------------------------------------------------- */
-
-void submit_job(const char *name) {
-    if (name == NULL || *name == '\0') {
-        printf("Usage: submit <job_name>\n");
-        return;
-    }
-
-    pthread_mutex_lock(&jobs_lock);
-
-    if (job_count >= MAX_JOBS) {
-        pthread_mutex_unlock(&jobs_lock);
-        printf("Job list is full.\n");
-        return;
-    }
-
-    pthread_mutex_unlock(&jobs_lock);
-
-    int fd[2];
-
-    if (pipe(fd) == -1) {
-        perror("pipe");
-        return;
-    }
-
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        perror("fork");
-        close(fd[0]);
-        close(fd[1]);
-        return;
-    }
-
-    if (pid == 0) {
-        close(fd[0]);
-
-        char result[128];
-
-        snprintf(result, sizeof(result),
-                 "Job '%s' completed", name);
-
-        if (send_result(fd[1], result) < 0) {
-            perror("send_result");
-            close(fd[1]);
-            _exit(1);
-        }
-
-        close(fd[1]);
-        _exit(0);
-    }
-
-    close(fd[1]);
-
-    char result[128];
-
-    ssize_t n = receive_result(fd[0],
-                               result,
-                               sizeof(result));
-
-    close(fd[0]);
-
-    int status;
-
-    if (waitpid(pid, &status, 0) < 0) {
-        perror("waitpid");
-        return;
-    }
-
-    if (n < 0 || !WIFEXITED(status) ||
-        WEXITSTATUS(status) != 0) {
-        printf("Job execution failed.\n");
-        return;
-    }
-
-    pthread_mutex_lock(&jobs_lock);
-
-    if (job_count >= MAX_JOBS) {
-        pthread_mutex_unlock(&jobs_lock);
-        printf("Job list is full.\n");
-        return;
-    }
-
-    Job *job = &jobs[job_count];
-
-    job->id = job_count + 1;
-
-    snprintf(job->name, sizeof(job->name),
-             "%s", name);
-
-    job->status = JOB_COMPLETED;
-    job->worker_id = 0;
-    job->checksum = 0;
-
-    job_count++;
-
-    int id = job->id;
-
-    pthread_mutex_unlock(&jobs_lock);
-
-    printf("Submitted Job %d: %s\n", id, name);
-    printf("Manager received: %s\n", result);
-}
 
 /* --------------------------------------------------
    Display job information
@@ -312,7 +205,21 @@ void jobs_mark_running(int job_id) {
 
     pthread_mutex_unlock(&jobs_lock);
 }
+/* Mark a job as failed. */
+void jobs_mark_failed(int job_id) {
+    pthread_mutex_lock(&jobs_lock);
 
+    for (int i = 0; i < job_count; i++) {
+        if (jobs[i].id == job_id) {
+            if (jobs[i].status != JOB_COMPLETED) {
+                jobs[i].status = JOB_FAILED;
+            }
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&jobs_lock);
+}
 /* --------------------------------------------------
    Publish worker result through pipe
    -------------------------------------------------- */

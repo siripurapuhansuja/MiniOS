@@ -3,7 +3,7 @@ CC = gcc
 CPPFLAGS += -Iinclude
 CFLAGS = -Wall -Wextra
 
-SRCS = src/main.c src/shell.c src/system_info.c src/process.c src/ipc.c src/jobs.c src/workers.c
+SRCS = src/main.c src/shell.c src/system_info.c src/process.c src/ipc.c src/jobs.c src/workers.c src/sync.c src/runtime.c
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 TARGET = minios
