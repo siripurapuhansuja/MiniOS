@@ -2,6 +2,18 @@
 *.o
 *.d
 
+# Compiled executables
+minios
+uptime_demo
+fork_demo
+fork_memory_demo
+exec_wait_demo
+pipe_demo
+
+# Build and test output
+build/
+
 # Temporary files
 *.swp
 *~
+.DS_Store
