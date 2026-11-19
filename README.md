@@ -153,8 +153,6 @@ Run individual demonstrations:
 ./pipe_demo
 ```
 
-## Testing
-
 
 ## Testing
 
