@@ -155,18 +155,29 @@ Run individual demonstrations:
 
 ## Testing
 
-Build and execute the automated tests:
+
+## Testing
+
+Build and execute the automated test suite:
 
 ```bash
 make test
 ```
 
-The tests cover:
+The test suite includes:
 
 - Queue FIFO ordering and shutdown.
 - Multiple producers and consumers.
 - Race-condition demonstrations.
 - Worker shutdown and pending-job draining.
+- Member 5 integration testing of the MiniOS shell, system information, process listing, job submission, worker status, race demonstration, and graceful shutdown.
+
+Run the Member 5 integration test independently:
+
+```bash
+bash tests/test_m5.sh
+```
+
 
 ## Worker Benchmark
 
