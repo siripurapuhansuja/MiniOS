@@ -66,6 +66,7 @@ test: $(QUEUE_TEST) $(RACE_TEST) $(DRAIN_TEST)
 	./$(QUEUE_TEST)
 	./$(RACE_TEST)
 	./$(DRAIN_TEST)
+	bash tests/test_m5.sh
 
 benchmark: $(BENCHMARK)
 	@echo "Run with: ./$(BENCHMARK) --workers 4"
